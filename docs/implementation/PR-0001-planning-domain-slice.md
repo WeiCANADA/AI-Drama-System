@@ -5,16 +5,22 @@
 - Status: Draft implementation plan
 - Readiness: READY FOR IMPLEMENTATION
 - Implementation Status: IMPLEMENTED
+- Review Status: ACCEPT
 - Implemented App: planning
 - Migration: planning/migrations/0001_initial.py
 - Validation Status:
   - cross-scene StoryboardPanel.primary_shot validation implemented via
-    `StoryboardPanel.clean()`
+    `StoryboardPanel.clean()` and enforced on normal persistence paths via
+    `StoryboardPanel.save()` calling `full_clean()`
 - Test Result Summary:
   - `python manage.py check` passed
   - `python manage.py makemigrations --check --dry-run` reported no changes
   - `python manage.py migrate` applied `planning.0001_initial`
-  - `python manage.py test` passed with 26 tests
+  - `python manage.py test` passed with 30 tests
+- Known Non-Blocking Limitation:
+  - Django bulk operations (`bulk_create`, `QuerySet.update`) bypass model
+    `save()`/`full_clean()` hooks; PR-0001A enforces cross-scene panel-shot
+    invariants on normal ORM persistence paths.
 - Slice Type: Planning-domain implementation slice
 - Scope Discipline:
   - no code in this document

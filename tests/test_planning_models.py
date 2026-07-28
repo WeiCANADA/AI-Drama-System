@@ -67,7 +67,7 @@ class PlanningModelTests(TestCase):
 
     def test_panel_order_unique_within_storyboard(self) -> None:
         StoryboardPanel.objects.create(storyboard=self.storyboard, panel_order=1)
-        with self.assertRaises(IntegrityError):
+        with self.assertRaises((ValidationError, IntegrityError)):
             StoryboardPanel.objects.create(storyboard=self.storyboard, panel_order=1)
 
     def test_panel_order_can_repeat_across_storyboards(self) -> None:
@@ -76,17 +76,17 @@ class PlanningModelTests(TestCase):
         self.assertEqual(panel.panel_order, 1)
 
     def test_panel_can_exist_without_primary_shot(self) -> None:
-        panel = StoryboardPanel.objects.create(storyboard=self.storyboard, panel_order=1, primary_shot=None)
+        panel = StoryboardPanel.objects.create(storyboard=self.storyboard, panel_order=1)
         self.assertIsNone(panel.primary_shot)
 
     def test_shot_can_have_zero_panels(self) -> None:
         other_shot = Shot.objects.create(scene=self.scene, shot_order=2)
-        self.assertEqual(other_shot.storyboard_panels.count(), 0)
+        self.assertEqual(StoryboardPanel.objects.filter(primary_shot=other_shot).count(), 0)
 
     def test_shot_can_have_multiple_panels(self) -> None:
         StoryboardPanel.objects.create(storyboard=self.storyboard, panel_order=1, primary_shot=self.shot)
         StoryboardPanel.objects.create(storyboard=self.storyboard, panel_order=2, primary_shot=self.shot)
-        self.assertEqual(self.shot.storyboard_panels.count(), 2)
+        self.assertEqual(StoryboardPanel.objects.filter(primary_shot=self.shot).count(), 2)
 
     def test_no_multi_shot_relation_exists(self) -> None:
         field_names = {field.name for field in StoryboardPanel._meta.get_fields()}
@@ -103,9 +103,38 @@ class PlanningModelTests(TestCase):
         with self.assertRaises(ValidationError):
             panel.full_clean()
 
+    def test_cross_scene_panel_primary_shot_save_rejected(self) -> None:
+        other_episode = Episode.objects.create(story=self.story, episode_order=2)
+        other_scene = Scene.objects.create(episode=other_episode, scene_order=1)
+        other_shot = Shot.objects.create(scene=other_scene, shot_order=1)
+        panel = StoryboardPanel(storyboard=self.storyboard, panel_order=4, primary_shot=other_shot)
+        with self.assertRaises(ValidationError):
+            panel.save()
+
+    def test_cross_scene_panel_primary_shot_create_rejected(self) -> None:
+        other_episode = Episode.objects.create(story=self.story, episode_order=2)
+        other_scene = Scene.objects.create(episode=other_episode, scene_order=1)
+        other_shot = Shot.objects.create(scene=other_scene, shot_order=1)
+        with self.assertRaises(ValidationError):
+            StoryboardPanel.objects.create(
+                storyboard=self.storyboard,
+                panel_order=5,
+                primary_shot=other_shot,
+            )
+
     def test_same_scene_panel_primary_shot_validation_passes(self) -> None:
         panel = StoryboardPanel(storyboard=self.storyboard, panel_order=3, primary_shot=self.shot)
         panel.full_clean()
+
+    def test_same_scene_panel_primary_shot_save_succeeds(self) -> None:
+        panel = StoryboardPanel(storyboard=self.storyboard, panel_order=6, primary_shot=self.shot)
+        panel.save()
+        self.assertIsNotNone(panel.pk)
+
+    def test_panel_without_primary_shot_save_succeeds(self) -> None:
+        panel = StoryboardPanel(storyboard=self.storyboard, panel_order=7)
+        panel.save()
+        self.assertIsNone(panel.primary_shot)
 
     def test_project_protected_while_story_exists(self) -> None:
         with self.assertRaises(ProtectedError):

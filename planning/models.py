@@ -122,8 +122,12 @@ class StoryboardPanel(models.Model):
 
     def clean(self) -> None:
         super().clean()
-        if self.primary_shot_id and self.storyboard_id:
-            if self.primary_shot.scene_id != self.storyboard.scene_id:
+        if self.primary_shot is not None:
+            if self.primary_shot.scene != self.storyboard.scene:
                 raise ValidationError(
                     {"primary_shot": "Primary shot must belong to the same scene as the storyboard."}
                 )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
