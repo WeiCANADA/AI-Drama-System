@@ -4,6 +4,17 @@
 
 - Status: Draft implementation plan
 - Readiness: READY FOR IMPLEMENTATION
+- Implementation Status: IMPLEMENTED
+- Implemented App: planning
+- Migration: planning/migrations/0001_initial.py
+- Validation Status:
+  - cross-scene StoryboardPanel.primary_shot validation implemented via
+    `StoryboardPanel.clean()`
+- Test Result Summary:
+  - `python manage.py check` passed
+  - `python manage.py makemigrations --check --dry-run` reported no changes
+  - `python manage.py migrate` applied `planning.0001_initial`
+  - `python manage.py test` passed with 26 tests
 - Slice Type: Planning-domain implementation slice
 - Scope Discipline:
   - no code in this document
