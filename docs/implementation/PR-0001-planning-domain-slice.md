@@ -52,11 +52,14 @@ Planning conclusions adopted from reviewed specifications only:
 - ordering must be explicit
 - UUID identity remains primary direction
 - human-readable codes remain separate from primary keys
+- relational/domain integrity is preferred over opaque parent-ID substitutes
 
 ## Scope
 
 Included in PR-0001:
 
+- minimum Project/Story/Episode hierarchy skeleton required to support a real
+  Scene parent relationship
 - Scene domain persistence and basic validation
 - Shot domain persistence and basic validation
 - Storyboard domain persistence and basic validation
@@ -66,8 +69,7 @@ Included in PR-0001:
 - primary StoryboardPanel -> Shot association only
 - minimal provenance-oriented created/updated references needed to preserve
   future traceability
-- minimal revision-supporting fields only where current specifications are
-  stable enough for this slice
+- minimal descriptive fields only where clearly useful and safely optional
 
 Scope objective:
 
@@ -94,12 +96,16 @@ Explicitly excluded from PR-0001:
 - multi-shot StoryboardPanel support
 - generic versioning framework
 - full storyboard revision history model if more closure is needed
+- freezing storyboard lifecycle as a mandatory enum/state policy
 - tests implementation in this task document
 
 ## Domain Objects
 
 Objects included in the slice:
 
+- Project
+- Story
+- Episode
 - Scene
 - Shot
 - Storyboard
@@ -107,9 +113,6 @@ Objects included in the slice:
 
 Objects referenced but not implemented in PR-0001:
 
-- Project
-- Story
-- Episode
 - Character
 - CharacterVersion
 - Artifact
@@ -120,16 +123,15 @@ Reference policy for excluded upstream/downstream concepts:
 
 - treat them as future linked concepts,
 - avoid premature concrete schema for unresolved domains,
-- only store minimal opaque parent/reference anchors where required for
-  hierarchy integrity and planning linkage.
+- do not use opaque UUID stand-ins for canonical hierarchy parent
+  relationships.
 
 ## Relationships
 
 Stable relationships implemented in PR-0001:
 
 - Episode -> Scene:
-  - one Episode reference per Scene
-  - Episode model itself is not implemented in this slice
+  - one real Episode parent relationship per Scene
 - Scene -> Shot:
   - one Scene contains ordered Shots
   - one Shot belongs to exactly one Scene
@@ -174,6 +176,26 @@ Identity separation rules:
 - domain identity != provenance linkage
 - StoryboardPanel identity != Shot identity
 - human-readable code != primary key
+
+Hierarchy integrity options reviewed:
+
+- Option A:
+  - add the minimum Project/Story/Episode hierarchy skeleton required to give
+    Scene a real canonical parent relationship.
+- Option B:
+  - defer Scene persistence until Episode exists, which would also force Shot
+    persistence deferral because Shot requires Scene containment.
+
+Recommendation:
+
+- choose Option A.
+
+Reason:
+
+- it preserves canonical relational/domain integrity,
+- it avoids opaque parent-ID substitution,
+- it keeps the intended planning slice coherent,
+- it is safer than deferring Scene and collapsing the whole slice.
 
 ## Ordering Strategy
 
@@ -228,8 +250,8 @@ Minimal provenance scope for PR-0001:
 - stable parent/containment relationships
 - explicit ordering fields
 - optional human-readable codes
-- timestamps for creation/update if project conventions require them in model
-  baseline
+- timestamps for creation/update only if they are part of repository-standard
+  model baseline rather than planning-slice-specific architecture
 
 Deferred provenance:
 
@@ -280,8 +302,8 @@ Evaluation:
 
 Recommendation for PR-0001:
 
-- choose Option A: one production/planning app for Scene, Shot, Storyboard,
-  StoryboardPanel
+- choose Option A: one production/planning app for Project, Story, Episode,
+  Scene, Shot, Storyboard, and StoryboardPanel
 
 Reason:
 
@@ -298,13 +320,25 @@ Reason:
 | Field Name | Conceptual Purpose | Source Specification | REQUIRED or OPTIONAL for PR-0001 | Why It Belongs in First Slice |
 |---|---|---|---|---|
 | id | Stable scene identity anchor | docs/domain/scene.md `scene_id` | REQUIRED | Core domain identity is required immediately. |
-| episode_id | Parent Episode opaque reference | docs/domain/scene.md `parent_episode_ref` | REQUIRED | Canonical hierarchy requires Scene under Episode even if Episode model is deferred. |
+| episode_id | Parent Episode relationship | docs/domain/scene.md `parent_episode_ref` | REQUIRED | Canonical hierarchy requires real Scene containment under Episode. |
 | scene_order | Explicit ordering within Episode | docs/domain/scene.md `scene_order` | REQUIRED | Ordering ownership is stable and must not rely on insertion order. |
 | scene_code | Human-readable scene identifier | docs/domain/scene.md `scene_code` | OPTIONAL | Useful production affordance while remaining separate from PK. |
-| scene_purpose | Shared narrative purpose | docs/domain/scene.md `scene_purpose` | REQUIRED | Stable shared narrative context is core Scene semantics. |
+| scene_purpose | Shared narrative purpose | docs/domain/scene.md `scene_purpose` | OPTIONAL | Useful planning context, but the source spec does not define it as a strict first-migration invariant. |
 | dramatic_objective | Higher-level dramatic aim/change | docs/domain/scene.md `dramatic_objective` | OPTIONAL | Stable enough, but not required for the smallest coherent slice. |
 | time_context_text | Shared temporal context summary | docs/domain/scene.md `time_context_ref` | OPTIONAL | Allows minimal time/place anchoring without inventing a Time domain. |
 | location_context_text | Shared location/environment context summary | docs/domain/scene.md `location_context_ref` | OPTIONAL | Supports stable scene-level time/place semantics while generic Asset/Location domain is deferred. |
+
+### Project / Story / Episode Skeleton
+
+| Field Name | Conceptual Purpose | Source Specification | REQUIRED or OPTIONAL for PR-0001 | Why It Belongs in First Slice |
+|---|---|---|---|---|
+| project.id | Stable project identity | docs/DEVELOPMENT_SPEC.md canonical hierarchy | REQUIRED | Required to support real canonical parentage rather than opaque stand-ins. |
+| story.id | Stable story identity | docs/DEVELOPMENT_SPEC.md canonical hierarchy | REQUIRED | Required to preserve Story under Project. |
+| story.project_id | Canonical parent relationship | docs/DEVELOPMENT_SPEC.md canonical hierarchy | REQUIRED | Required for real hierarchy integrity. |
+| episode.id | Stable episode identity | docs/DEVELOPMENT_SPEC.md canonical hierarchy | REQUIRED | Scene requires real Episode parentage. |
+| episode.story_id | Canonical parent relationship | docs/DEVELOPMENT_SPEC.md canonical hierarchy | REQUIRED | Required for real hierarchy integrity. |
+| episode_order | Explicit ordering within Story | docs/DEVELOPMENT_SPEC.md canonical hierarchy; ordering principles reflected across current domain specs | REQUIRED | Episode is an ordered child in the canonical hierarchy and must not rely on insertion order. |
+| episode_code | Human-readable episode identifier | docs/DEVELOPMENT_SPEC.md canonical hierarchy | OPTIONAL | Useful only if repository conventions want readable hierarchy labels this early. |
 
 ### Shot
 
@@ -314,8 +348,8 @@ Reason:
 | scene_id | Canonical containment in Scene | docs/domain/shot.md `scene_reference` | REQUIRED | Stable one-Scene-per-Shot relationship is core to this slice. |
 | shot_order | Explicit order within Scene | docs/domain/shot.md `shot_order` | REQUIRED | Ordering is explicit and stable. |
 | shot_code | Human-readable shot code | docs/domain/shot.md `shot_code` | OPTIONAL | Valuable for production readability while remaining separate from PK. |
-| narrative_purpose | Local dramatic purpose | docs/domain/shot.md `narrative_purpose` | REQUIRED | Core shot intent in planning slice. |
-| action_intent | Visual action target | docs/domain/shot.md `action_intent` | REQUIRED | Stable and central to shot planning. |
+| narrative_purpose | Local dramatic purpose | docs/domain/shot.md `narrative_purpose` | OPTIONAL | Useful planning context, but not a stable NOT NULL invariant from current spec. |
+| action_intent | Visual action target | docs/domain/shot.md `action_intent` | OPTIONAL | Useful planning context, but not part of the minimum containment/order contract. |
 | subject_focus | Primary subject emphasis | docs/domain/shot.md `subject_focus` | OPTIONAL | Helpful but not necessary to achieve minimal slice integrity. |
 
 ### Storyboard
@@ -324,13 +358,16 @@ Reason:
 |---|---|---|---|---|
 | id | Stable storyboard identity | docs/domain/storyboard.md `storyboard_id` | REQUIRED | Storyboard is a first-class planning/review construct. |
 | scene_id | Primary planning scope linkage to Scene | docs/domain/storyboard.md `storyboard_scope_ref`; docs/domain/scene.md storyboard linkage | REQUIRED | Minimal planning slice needs a stable scene-scoped storyboard anchor. |
-| status | Planning/review lifecycle context | docs/domain/storyboard.md `storyboard_status` | REQUIRED | Lifecycle state is part of current stable storyboard semantics. |
 | title | Human-readable storyboard label | implied planning identity convenience | OPTIONAL | Useful for operator readability without changing architecture. |
 
 Implementation note:
 
 - PR-0001 should scope Storyboard to one Scene to stay conservative.
 - broader storyboard scope patterns remain deferred.
+- Storyboard lifecycle remains conceptual in the source specification and should
+  not be frozen into a required status enum in the first migration.
+- A primary Shot association remains the preferred v1 direction, but PR-0001
+  should not encode that preference as a hard NOT NULL invariant.
 
 ### StoryboardPanel
 
@@ -339,7 +376,7 @@ Implementation note:
 | id | Stable panel identity | docs/domain/storyboard.md `panel_id` | REQUIRED | Panel identity must remain distinct from Shot and Artifact. |
 | storyboard_id | Parent storyboard linkage | docs/domain/storyboard.md panel containment | REQUIRED | Stable ordered panel scope requires explicit parent. |
 | panel_order | Explicit order within Storyboard | docs/domain/storyboard.md `panel_order` | REQUIRED | Ordering is stable and explicit in spec. |
-| primary_shot_id | Preferred one primary Shot association | docs/domain/storyboard.md `panel_primary_shot_ref` | REQUIRED | PR-0001 intentionally implements only the stable preferred cardinality direction. |
+| primary_shot_id | Preferred one primary Shot association | docs/domain/storyboard.md `panel_primary_shot_ref` | OPTIONAL | The spec establishes a preferred v1 direction, but does not clearly make unbound Panels invalid as a database-level invariant in the first migration. |
 | panel_notes | Planning annotations/notes | docs/domain/storyboard.md `panel_annotations` | OPTIONAL | Preserves basic planning utility without inventing heavy annotation schema. |
 
 Field exclusions for PR-0001:
@@ -358,6 +395,14 @@ Only stable invariants should become constraints in PR-0001.
 
 Candidate constraints:
 
+- Project:
+  - no additional stable constraints beyond primary identity in PR-0001
+- Story:
+  - `project_id` required
+- Episode:
+  - `story_id` required
+  - `episode_order` required
+  - unique `(story_id, episode_order)`
 - Scene:
   - `episode_id` required
   - `scene_order` required
@@ -370,11 +415,10 @@ Candidate constraints:
   - unique `(scene_id, shot_order)`
 - Storyboard:
   - `scene_id` required
-  - no global uniqueness requirement for status/title
+  - no required lifecycle-status constraint in PR-0001
 - StoryboardPanel:
   - `storyboard_id` required
   - `panel_order` required
-  - `primary_shot_id` required
   - unique `(storyboard_id, panel_order)`
 
 Constraints intentionally excluded:
@@ -390,21 +434,29 @@ Constraints intentionally excluded:
 
 PR-0001 validation rules:
 
-- Scene must have parent Episode reference.
+- Project/Story/Episode skeleton must provide real canonical parent chain for
+  Scene.
+- Episode must have explicit order within Story.
+- Scene must have real parent Episode relationship.
 - Scene must have explicit order within Episode.
 - Shot must belong to exactly one Scene.
 - Shot must have explicit order within Scene.
 - Storyboard must link to one Scene in PR-0001 scope.
 - StoryboardPanel must belong to one Storyboard.
-- StoryboardPanel must have one primary Shot.
-- StoryboardPanel primary Shot should belong to the same Scene as the
+- if `primary_shot_id` is present, it must belong to the same Scene as the
   Storyboard in PR-0001 scope.
 - human-readable codes, if present, must not be treated as primary identity.
+
+Lifecycle-policy note:
+
+- PR-0001 does not treat unbound StoryboardPanels as ideal planning state.
+- It simply avoids encoding "must have primary shot before persistence" as a
+  first-migration database invariant.
 
 Validation rules explicitly deferred:
 
 - scene-wide inheritance/override resolution
-- storyboard gating rules
+- storyboard lifecycle/gating rules
 - revision approval policy
 - continuity validation
 - QC validation
@@ -413,13 +465,18 @@ Validation rules explicitly deferred:
 
 Model tests:
 
-- Scene creation with required identity and ordering fields
+- Project/Story/Episode skeleton creation with real parent relationships
+- Episode creation with required explicit order within Story
+- Scene creation with required identity, real Episode parent, and ordering
+  fields
 - Shot creation with required parent Scene and order
 - Storyboard creation scoped to Scene
-- StoryboardPanel creation with required parent Storyboard and primary Shot
+- StoryboardPanel creation with required parent Storyboard and optional primary
+  Shot
 
 Ordering tests:
 
+- two Episodes under same Story cannot share same `episode_order`
 - two Scenes under same Episode cannot share same `scene_order`
 - two Shots under same Scene cannot share same `shot_order`
 - two Panels under same Storyboard cannot share same `panel_order`
@@ -427,13 +484,15 @@ Ordering tests:
 
 Relationship/cardinality tests:
 
+- Scene cannot exist without real Episode parent relationship
 - Shot cannot exist without Scene
 - Panel cannot exist without Storyboard
-- Panel cannot exist without primary Shot
+- one Panel may exist without primary Shot in the first migration
 - one Shot may have zero panels
 - one Shot may have multiple panels
 - panel-to-multiple-shots is not supported in PR-0001
-- panel primary Shot must belong to same Scene as its Storyboard
+- if panel primary Shot is present, it must belong to same Scene as its
+  Storyboard
 
 Constraint tests:
 
@@ -443,27 +502,50 @@ Constraint tests:
 
 Deletion/protection behavior tests:
 
-- deleting Scene with existing Shots should be protected
-- deleting Shot referenced by StoryboardPanels should be protected
-- deleting Storyboard with Panels should cascade to Panels or be protected,
-  but policy must be chosen consistently before code
+- Project -> Story deletion policy: CONSERVATIVE DEFAULT
+  - deleting Project with existing Stories should be protected
+- Story -> Episode deletion policy: CONSERVATIVE DEFAULT
+  - deleting Story with existing Episodes should be protected
+- Episode -> Scene deletion policy: CONSERVATIVE DEFAULT
+  - deleting Episode with existing Scenes should be protected
+- Scene -> Shot deletion policy: CONSERVATIVE DEFAULT
+  - deleting Scene with existing Shots should be protected
+- Scene -> Storyboard deletion policy: CONSERVATIVE DEFAULT
+  - deleting Scene with existing Storyboards should be protected
+- Storyboard -> StoryboardPanel deletion policy: CONSERVATIVE DEFAULT
+  - deleting Storyboard with existing Panels should be protected
+- Shot -> StoryboardPanel deletion policy: CONSERVATIVE DEFAULT
+  - deleting Shot referenced by StoryboardPanels should be protected
 
 Preferred deletion policy for PR-0001:
 
-- protect Scene from deletion while Shots exist
-- protect Shot from deletion while Panels exist
-- allow Storyboard deletion to cascade to Panels if Storyboard is treated as
-  planning-container owner
+- Project -> Story: PROTECT
+- Story -> Episode: PROTECT
+- Episode -> Scene: PROTECT
+- Scene -> Shot: PROTECT
+- Scene -> Storyboard: PROTECT
+- Storyboard -> StoryboardPanel: PROTECT
+- Shot -> StoryboardPanel: PROTECT
+
+Deletion-policy note:
+
+- this is a conservative first-slice implementation policy.
+- it is not a permanent archive/soft-delete architecture decision.
+- it exists to avoid destructive cascade loss of production planning history.
 
 ## Migration Plan
 
 Migration scope for PR-0001 implementation phase should be incremental:
 
-1. create planning app models for Scene and Shot first
-2. apply ordering and parent constraints for Scene/Shot
-3. create Storyboard and StoryboardPanel models
-4. apply panel ordering and primary-shot constraints
-5. add minimal indexes supporting ordered retrieval by parent scope
+1. create minimal Project/Story/Episode hierarchy skeleton sufficient for real
+  Scene parent relationship
+2. apply ordering and parent constraints for hierarchy, including explicit
+  Episode ordering within Story
+3. create planning app models for Scene and Shot
+4. apply ordering and parent constraints for Scene and Shot
+5. create Storyboard and StoryboardPanel models
+6. apply panel ordering and optional primary-shot relation constraints
+7. add minimal indexes supporting ordered retrieval by parent scope
 
 Migration discipline:
 
@@ -474,38 +556,51 @@ Migration discipline:
 ## Implementation Sequence
 
 1. Decide and create one planning-domain app boundary.
-2. Implement Scene model with stable identity, parent Episode reference,
-   ordering, and minimal narrative fields.
-3. Implement Shot model with stable identity, Scene parent, ordering, and core
-   shot intent fields.
-4. Implement Storyboard model scoped conservatively to Scene.
-5. Implement StoryboardPanel model with ordered parent Storyboard linkage and
-   one primary Shot association.
-6. Add admin/model-level validation or equivalent domain-safe validation for
+2. Implement minimal Project/Story/Episode hierarchy skeleton needed for real
+  Scene containment.
+3. Implement explicit Episode ordering within Story.
+4. Implement Scene model with stable identity, real Episode parent,
+  ordering, and only optional descriptive fields.
+5. Implement Shot model with stable identity, Scene parent, ordering, and only
+  optional descriptive fields.
+6. Implement Storyboard model scoped conservatively to Scene without freezing a
+  mandatory lifecycle-status contract.
+7. Implement StoryboardPanel model with ordered parent Storyboard linkage and
+  optional primary Shot association.
+8. Add admin/model-level validation or equivalent domain-safe validation for
    scene/storyboard/panel scope alignment.
-7. Add model and constraint tests for identity, ordering, containment, and
-   deletion behavior.
+9. Add model and constraint tests for identity, ordering, containment, and
+  deletion behavior.
 
 ## Definition of Done
 
 PR-0001 is done when:
 
+- minimal Project/Story/Episode hierarchy skeleton exists to support real Scene
+  parentage
 - Scene, Shot, Storyboard, and StoryboardPanel persistence models exist
 - UUID primary identity is used consistently
 - human-readable codes remain separate from PKs
+- Episode ordering within Story is explicit and constrained
 - Scene -> Shot ordering is explicit and constrained
 - StoryboardPanel ordering is explicit and constrained
 - Shot remains the primary production unit in code structure and naming
 - StoryboardPanel does not become a hierarchy substitute
-- one primary Shot association per Panel is implemented
+- one primary Shot association per Panel is supported without implementing
+  multi-shot semantics
 - multi-shot panel semantics remain deferred
+- descriptive planning fields are optional unless clearly supported as stable
+  invariants
+- Storyboard lifecycle policy is not prematurely frozen as a required enum
+- all first-slice hierarchy/planning foreign keys use conservative PROTECT
+  deletion behavior
 - required tests pass for identity, ordering, containment, and deletion policy
 - no generation/workflow/qc/continuity/provider implementation leaks into the
   slice
 
 ## Open Questions
 
-Questions that do not block PR-0001:
+Questions that do not block PR-0001 once the hierarchy skeleton is included:
 
 - should `scene_code` and `shot_code` follow a standardized formatting policy in
   a later PR?
@@ -536,18 +631,46 @@ Reason:
 
 ## Risks
 
-- Risk: using opaque Episode references before Episode model exists may require
-  later migration refinement.
+- Risk: introducing minimal Project/Story/Episode skeleton broadens the first
+  migration slightly, even though it is safer than using opaque parent IDs.
 - Risk: a minimal Storyboard model may later need revision-specific extraction.
-- Risk: keeping location context as free text in this slice may need refactor
-  once generic Asset domain is specified.
-- Risk: deletion policy needs careful choice to avoid destroying planning
-  history unintentionally.
+- Risk: keeping descriptive planning fields optional may reduce early data
+  richness until later PRs add more planning content.
+- Risk: deletion policy needs conservative defaults to avoid destroying
+  planning history unintentionally.
+- Risk: optional `primary_shot_id` allows temporarily unbound Panels, so later
+  review/approval or downstream-generation policy must decide when binding
+  becomes mandatory.
 
 Risk level overall:
 
 - low to moderate for this slice because it intentionally excludes the most
   architecture-sensitive runtime concerns.
+
+## Readiness
+
+Hierarchy integrity reassessment:
+
+- Option A is recommended.
+- Option B is rejected for PR-0001 because deferring Scene would also undermine
+  Shot and collapse the intended slice.
+
+Implementation readiness depends on one exact condition:
+
+- PR-0001 must include the minimum Project/Story/Episode hierarchy skeleton
+  needed for a real Scene parent relationship.
+- PR-0001 must implement conservative PROTECT deletion behavior for all
+  first-slice hierarchy/planning foreign keys.
+
+Implementation-contract status after cleanup:
+
+- no unresolved choice remains that Django model implementation must make
+  implicitly for hierarchy parentage, deletion behavior, storyboard lifecycle
+  requiredness, or panel primary-shot requiredness.
+
+Final determination:
+
+- READY FOR IMPLEMENTATION
 
 ## Review Checklist
 
