@@ -154,6 +154,34 @@ Provider-specific behavior MUST remain behind provider interfaces or adapters.
 
 ---
 
+## 1.4.1A Reuse-First AI Capability Strategy
+
+AI Drama System is primarily a production and orchestration platform around AI
+capabilities, not a foundation-model training program.
+
+Where practical, the system SHOULD prefer reuse of existing capabilities via:
+
+```text
+existing models
+mature open-source libraries
+official provider APIs
+existing workflow ecosystems
+local models where appropriate
+replaceable provider adapters
+configurable and versioned workflows
+```
+
+Custom/local model infrastructure is not prohibited.
+
+Custom/local models MAY be introduced when a concrete system requirement cannot
+reasonably be satisfied by existing capabilities, or when a documented strategic
+reason justifies that investment.
+
+Any such introduction SHOULD be justified through specification and ADR review
+when architecturally significant.
+
+---
+
 ## 1.4.2 Workflow-Driven
 
 Generation behavior MUST be represented through configurable and versioned workflows.

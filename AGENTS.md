@@ -123,6 +123,19 @@ The AI Drama System is:
 - traceable
 - provider-independent where practical
 
+The AI Drama System is primarily an AI-native narrative production and
+orchestration system.
+
+It should normally reuse existing AI capabilities through provider/workflow
+integration before introducing custom AI infrastructure.
+
+This is not a blanket prohibition on custom/local models.
+
+Custom AI/model infrastructure may be introduced when a concrete product,
+workflow, quality, controllability, compliance, cost, or deployment requirement
+cannot reasonably be satisfied by existing capabilities, and the decision is
+documented through specification and ADR review where required.
+
 These principles are architectural constraints, not suggestions,
 unless deliberately changed through specification and ADR.
 
@@ -207,6 +220,37 @@ Research supports architecture but does not automatically define it.
 
 Important research conclusions that may influence architecture should be
 recorded in the repository rather than left only in conversations.
+
+Research should be proportional to likely production-system impact.
+
+High-priority research is research that can materially influence domain,
+architecture, workflow design, provider integration, continuity, QC,
+provenance, reproducibility, or human review.
+
+Model-internal or foundation-model-training research is normally lower priority
+unless tied to a concrete production-system question.
+
+Before starting substantial new research, apply a lightweight entry gate:
+
+Could this research materially affect a concrete production-system requirement?
+
+- If yes: proceed.
+- If no: usually keep effort small or skip.
+- If uncertain: prefer a small exploratory note before a large research track.
+
+Research should not continue indefinitely once a relevant system question is
+sufficiently answered.
+
+When evidence is sufficient, prefer promotion flow toward:
+
+Research Finding
+-> Cross-Source Synthesis
+-> Research Principle
+-> Candidate Requirement
+-> Specification
+-> ADR when required
+-> Domain Model / Architecture
+-> Small Implementation Increment
 
 ---
 
